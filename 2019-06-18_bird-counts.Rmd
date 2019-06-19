@@ -1,0 +1,201 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(gganimate)
+theme_set(theme_minimal())
+```
+
+
+```{r}
+bird_counts <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-06-18/bird_counts.csv",
+                               col_types = cols(
+  year = col_integer(),
+  species = col_character(),
+  species_latin = col_character(),
+  how_many_counted = col_double(),
+  total_hours = col_double(),
+  how_many_counted_by_hour = col_double()
+)
+                               )
+
+bird_counts %>% 
+  head(100)
+```
+
+
+```{r}
+bird_counts %>% 
+  skimr::skim()
+```
+
+So there is some missing data.
+
+```{r}
+bird_counts %>% 
+  group_by(species) %>% 
+  summarise_at(vars(how_many_counted, total_hours), ~sum(.x, na.rm = T))
+  
+```
+
+
+```{r}
+bird_counts %>% 
+  filter(is.na(total_hours)) %>% 
+  group_by(year) %>% 
+  summarise(distinct_species = n_distinct(species))
+```
+
+```{r}
+bird_counts %>% 
+  count(year)
+```
+
+
+```{r}
+bird_counts %>% 
+  ggplot(aes(x = year, weight = total_hours)) +
+  geom_bar() +
+  labs(title = "Number of hours spent watching or listening to birds",
+       y = "# of hours",
+       x = "year") +
+  scale_y_continuous(labels = scales::comma_format())
+```
+
+
+```{r}
+bird_counts %>% 
+  filter(year >= 1950) %>% 
+  group_by(year) %>% 
+  summarise_at(vars(how_many_counted, total_hours), ~sum(.x, na.rm = T)) %>% 
+  mutate(counted_by_hour = how_many_counted / total_hours) %>% 
+  ggplot(aes(x = year, y = counted_by_hour)) +
+  geom_line() +
+  labs(title = "Number of birds counted per hour since 1950",
+       x = "year",
+       y = "# of birds")
+  
+```
+
+
+# Latin name for species
+
+```{r}
+bird_counts %>% 
+  distinct(species_latin) %>% 
+  arrange(species_latin)
+```
+
+```{r}
+bird_counts %>% 
+  mutate(genus = str_split(species_latin, " ")) %>% 
+  select(genus)
+
+bird_counts %>% 
+  mutate(genus = str_(species_latin, " ", n = 1))
+
+bird_counts %>% 
+  mutate(genus = str_remove(species_latin, " .*")) %>% 
+  select(genus) %>% 
+  count(genus, sort = T)
+```
+
+
+# Model each bird
+
+
+https://r4ds.had.co.nz/many-models.html
+
+```{r}
+bird_counts_filtered <- bird_counts %>% 
+  filter(year >= 1955)
+```
+
+
+```{r}
+bird_counts_filtered %>% 
+  ggplot(aes(x = year, y = how_many_counted, group = species)) +
+  geom_line(alpha = 0.3) +
+  scale_y_continuous(labels = scales::comma_format())
+```
+
+```{r}
+bird_counts_filtered %>% 
+  group_by(species) %>% 
+  arrange(year) %>% 
+  mutate(total_count = sum(how_many_counted),
+         cum_count = cumsum(how_many_counted) / total_count) %>% 
+  filter(total_count > 500) %>% 
+  ggplot(aes(x = year, y = cum_count, group = species)) +
+  geom_line(alpha = 0.3) +
+  theme_void()
+```
+
+
+
+
+```{r}
+wild_turkeys <- bird_counts %>% 
+  filter(year >= 1955,
+         species == "Wild Turkey")
+
+wild_turkeys %>% 
+  ggplot(aes(x = year, y = how_many_counted)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Raw data") 
+
+
+model_lm <- lm(how_many_counted ~ year, data = wild_turkeys)
+broom::augment(model_lm) %>% 
+  ggplot(aes(x = year, y = .fitted)) +
+  geom_line() +
+  geom_point()
+
+```
+
+
+```{r}
+bird_counts_filtered %>% 
+  group_by(species) %>% 
+  summarise(hours = sum(total_hours))
+```
+
+# Ideas
+
+Most popular bird
+Most popular by type
+Most popular species
+Correlatins of species - most correlated
+Gini index
+Premier league rank chart
+
+```{r}
+bird_counts_filtered %>% 
+  ggplot(aes(x = year, weight = total_hours)) +
+  geom_bar()
+```
+
+
+```{r}
+bird_counts_filtered %>% 
+  filter(how_many_counted > 0) %>% 
+  group_by(year) %>% 
+  summarise(n = n_distinct(species)) %>% 
+  ggplot(aes(x = year, y = n)) +
+  geom_line()
+```
+
+```{r}
+bird_counts_2017 <- bird_counts_filtered %>% 
+  filter(year == 2017)
+
+bird_counts_2017 %>% 
+  
+  
+```
+
